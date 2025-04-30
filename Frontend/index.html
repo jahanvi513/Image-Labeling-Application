@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Image Labeling Application</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f2f4f8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 30px 40px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+    }
+
+    h1 {
+      color: #333;
+      font-size: 28px;
+      margin-bottom: 24px;
+    }
+
+    input[type="file"] {
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid #ddd;
+      cursor: pointer;
+      font-size: 16px;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="file"]:hover {
+      border-color: #007bff;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 20px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    canvas {
+      margin-top: 30px;
+      border-radius: 12px;
+      border: 1px solid #ccc;
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Image Labeling Application</h1>
+    <input type="file" id="imageInput" accept="image/*"><br>
+    <button onclick="uploadImage()">Detect Objects</button><br>
+    <canvas id="canvas" width="640" height="480"></canvas>
+  </div>
+
+  <script>
+    let canvas = document.getElementById('canvas');
+    let ctx = canvas.getContext('2d');
+    let imageInput = document.getElementById('imageInput');
+
+    function uploadImage() {
+      let file = imageInput.files[0];
+      if (!file) return alert("Please select an image.");
+
+      const s3Bucket = 'image-labeling-project';
+      const fileName = file.name;
+
+      console.log({ bucket: s3Bucket, key: fileName });
+
+      fetch('https://lm4xxqy75a.execute-api.us-east-1.amazonaws.com/prod/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bucket: s3Bucket, key: fileName })
+      })
+      .then(res => res.json())
+      .then(data => {
+        let reader = new FileReader();
+        reader.onload = function(e) {
+          let img = new Image();
+          img.onload = function() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            const labels = JSON.parse(data.body);
+            labels.forEach(label => {
+              label.Instances.forEach(instance => {
+                const box = instance.BoundingBox;
+                if (box) {
+                  ctx.strokeStyle = 'red';
+                  ctx.lineWidth = 2;
+                  ctx.strokeRect(
+                    box.Left * canvas.width,
+                    box.Top * canvas.height,
+                    box.Width * canvas.width,
+                    box.Height * canvas.height
+                  );
+                  const textX = box.Left * canvas.width;
+                  const textY = box.Top * canvas.height - 10;
+
+                  ctx.font = 'bold 18px Arial';
+                  ctx.fillStyle = 'red';
+                  ctx.strokeStyle = 'white';
+                  ctx.lineWidth = 3;
+
+                  // Add white stroke to improve contrast
+                  ctx.strokeText(label.Name, textX, textY);
+                  ctx.fillText(label.Name, textX, textY);
+
+                }
+              });
+            });
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      })
+      .catch(err => {
+        console.error('Error:', err);
+        alert("Detection failed.");
+      });
+    }
+  </script>
+
+</body>
+</html>
