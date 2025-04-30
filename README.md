@@ -29,3 +29,8 @@ This project demonstrates a real-time image labeling system that detects and cla
 4. Detected objects with bounding boxes are returned as JSON.
 5. Frontend overlays results on the uploaded image.
 
+---
+
+## Demo Video
+
+[Demo Video](https://drive.google.com/drive/folders/13raIM7Sg6VR33EOIMg0p9L-rkuolDOZ0?usp=sharing)
